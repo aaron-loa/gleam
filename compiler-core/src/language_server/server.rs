@@ -19,8 +19,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use debug_ignore::DebugIgnore;
 use itertools::Itertools;
 use lsp_types::{
-    self as lsp, HoverProviderCapability, InitializeParams, Position, PublishDiagnosticsParams,
-    Range, TextEdit, Url,
+    self as lsp, HoverProviderCapability, InitializeParams, Position, PositionEncodingKind, PublishDiagnosticsParams, Range, TextEdit, Url
 };
 use serde_json::Value as Json;
 use std::collections::{HashMap, HashSet};
@@ -428,7 +427,7 @@ fn initialisation_handshake(connection: &lsp_server::Connection) -> InitializePa
         moniker_provider: None,
         linked_editing_range_provider: None,
         experimental: None,
-        position_encoding: None,
+        position_encoding: Some(PositionEncodingKind::UTF8),
         inline_value_provider: None,
         inlay_hint_provider: None,
         diagnostic_provider: None,
