@@ -131,11 +131,11 @@ fn utf8_index_to_utf16_index(src: &str, byte_index: usize, file: &mut std::fs::F
         file.write_all(format!("idx: {:?} {:?}\n", idx, char).as_bytes())
             .unwrap();
         if idx + char.len_utf8() > byte_index || idx == byte_index {
-            file.write_all(format!("break").as_bytes()).unwrap();
+            file.write_all(format!("break\n").as_bytes()).unwrap();
             break;
         }
         utf16_index += char.len_utf16() as u32;
-        file.write_all(format!("increased").as_bytes()).unwrap();
+        file.write_all(format!("increased\n").as_bytes()).unwrap();
     }
     return utf16_index;
 }
