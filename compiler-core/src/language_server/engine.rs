@@ -8,7 +8,8 @@ use crate::{
     config::PackageConfig,
     io::{CommandExecutor, FileSystemReader, FileSystemWriter},
     language_server::{
-        compiler::LspProjectCompiler, files::FileSystemProxy, progress::ProgressReporter,
+        compiler::LspProjectCompiler, files::FileSystemProxy,
+        progress::ProgressReporter,
     },
     line_numbers::LineNumbers,
     paths::ProjectPaths,
@@ -194,7 +195,7 @@ where
                     (url, &module.line_numbers)
                 }
             };
-            let range = src_span_to_lsp_range(location.span, line_numbers);
+            let range = src_span_to_lsp_range(location.span, line_numbers, None);
 
             Ok(Some(lsp::Location { uri, range }))
         })
@@ -367,8 +368,16 @@ where
                             kind: SymbolKind::FUNCTION,
                             tags: make_deprecated_symbol_tag(&function.deprecation),
                             deprecated: None,
-                            range: src_span_to_lsp_range(full_function_span, &line_numbers),
-                            selection_range: src_span_to_lsp_range(*name_location, &line_numbers),
+                            range: src_span_to_lsp_range(
+                                full_function_span,
+                                &line_numbers,
+                                Some(&module.code),
+                            ),
+                            selection_range: src_span_to_lsp_range(
+                                *name_location,
+                                &line_numbers,
+                                Some(&module.code),
+                            ),
                             children: None,
                         });
                     }
@@ -399,10 +408,15 @@ where
                             kind: SymbolKind::CLASS,
                             tags: make_deprecated_symbol_tag(&alias.deprecation),
                             deprecated: None,
-                            range: src_span_to_lsp_range(full_alias_span, &line_numbers),
+                            range: src_span_to_lsp_range(
+                                full_alias_span,
+                                &line_numbers,
+                                Some(&module.code),
+                            ),
                             selection_range: src_span_to_lsp_range(
                                 alias.name_location,
                                 &line_numbers,
+                                Some(&module.code),
                             ),
                             children: None,
                         });
@@ -442,10 +456,15 @@ where
                             kind: SymbolKind::CONSTANT,
                             tags: make_deprecated_symbol_tag(&constant.deprecation),
                             deprecated: None,
-                            range: src_span_to_lsp_range(full_constant_span, &line_numbers),
+                            range: src_span_to_lsp_range(
+                                full_constant_span,
+                                &line_numbers,
+                                Some(&module.code),
+                            ),
                             selection_range: src_span_to_lsp_range(
                                 constant.name_location,
                                 &line_numbers,
+                                Some(&module.code),
                             ),
                             children: None,
                         });
@@ -532,7 +551,11 @@ where
                     spread_location,
                     arguments,
                 } => {
-                    let range = Some(src_span_to_lsp_range(spread_location, &lines));
+                    let range = Some(src_span_to_lsp_range(
+                        spread_location,
+                        &lines,
+                        Some(&module.code),
+                    ));
 
                     let mut positional = vec![];
                     let mut labelled = vec![];
@@ -693,8 +716,12 @@ fn custom_type_symbol(
                     kind: SymbolKind::FIELD,
                     tags: None,
                     deprecated: None,
-                    range: src_span_to_lsp_range(full_arg_span, line_numbers),
-                    selection_range: src_span_to_lsp_range(*label_location, line_numbers),
+                    range: src_span_to_lsp_range(full_arg_span, line_numbers, Some(&module.code)),
+                    selection_range: src_span_to_lsp_range(
+                        *label_location,
+                        line_numbers,
+                        Some(&module.code),
+                    ),
                     children: None,
                 });
             }
@@ -726,8 +753,16 @@ fn custom_type_symbol(
                 },
                 tags: None,
                 deprecated: None,
-                range: src_span_to_lsp_range(full_constructor_span, line_numbers),
-                selection_range: src_span_to_lsp_range(constructor.name_location, line_numbers),
+                range: src_span_to_lsp_range(
+                    full_constructor_span,
+                    line_numbers,
+                    Some(&module.code),
+                ),
+                selection_range: src_span_to_lsp_range(
+                    constructor.name_location,
+                    line_numbers,
+                    Some(&module.code),
+                ),
                 children: if arguments.is_empty() {
                     None
                 } else {
@@ -761,8 +796,12 @@ fn custom_type_symbol(
         kind: SymbolKind::CLASS,
         tags: make_deprecated_symbol_tag(&type_.deprecation),
         deprecated: None,
-        range: src_span_to_lsp_range(full_type_span, line_numbers),
-        selection_range: src_span_to_lsp_range(type_.name_location, line_numbers),
+        range: src_span_to_lsp_range(full_type_span, line_numbers, Some(&module.code)),
+        selection_range: src_span_to_lsp_range(
+            type_.name_location,
+            line_numbers,
+            Some(&module.code),
+        ),
         children: if constructors.is_empty() {
             None
         } else {
@@ -784,7 +823,11 @@ fn hover_for_pattern(pattern: &TypedPattern, line_numbers: LineNumbers, module: 
     );
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(pattern.location(), &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            pattern.location(),
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -816,7 +859,11 @@ fn hover_for_function_head(
     );
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(fun.location, &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            fun.location,
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -829,7 +876,11 @@ fn hover_for_function_argument(
     let contents = format!("```gleam\n{type_}\n```");
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(argument.location, &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            argument.location,
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -857,7 +908,11 @@ fn hover_for_annotation(
     );
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(location, &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            location,
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -876,7 +931,11 @@ fn hover_for_module_constant(
     let contents = format!("```gleam\n{type_}\n```\n{documentation}");
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(constant.location, &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            constant.location,
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -904,7 +963,11 @@ fn hover_for_expression(
     );
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(expression.location(), &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            expression.location(),
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -932,7 +995,11 @@ fn hover_for_imported_value(
     );
     Hover {
         contents: HoverContents::Scalar(MarkedString::String(contents)),
-        range: Some(src_span_to_lsp_range(*location, &line_numbers)),
+        range: Some(src_span_to_lsp_range(
+            *location,
+            &line_numbers,
+            Some(&module.code),
+        )),
     }
 }
 
@@ -985,7 +1052,8 @@ fn code_action_unused_values(
 
     for unused in unused_values {
         let SrcSpan { start, end } = *unused;
-        let hover_range = src_span_to_lsp_range(SrcSpan::new(start, end), &line_numbers);
+        let hover_range =
+            src_span_to_lsp_range(SrcSpan::new(start, end), &line_numbers, Some(&module.code));
 
         // Check if this span is contained within any previously processed span
         if processed_lsp_range
@@ -1001,7 +1069,11 @@ fn code_action_unused_values(
         }
 
         let edit = TextEdit {
-            range: src_span_to_lsp_range(SrcSpan::new(start, start), &line_numbers),
+            range: src_span_to_lsp_range(
+                SrcSpan::new(start, start),
+                &line_numbers,
+                Some(&module.code),
+            ),
             new_text: "let _ = ".into(),
         };
 
@@ -1053,7 +1125,11 @@ fn code_action_unused_imports(
             end
         };
 
-        let range = src_span_to_lsp_range(SrcSpan::new(start, adjusted_end), &line_numbers);
+        let range = src_span_to_lsp_range(
+            SrcSpan::new(start, adjusted_end),
+            &line_numbers,
+            Some(&module.code),
+        );
         // Keep track of whether any unused import has is where the cursor is
         hovered = hovered || overlaps(params.range, range);
 
@@ -1119,7 +1195,7 @@ fn code_action_fix_names(
             correction,
         } = name_correction;
 
-        let range = src_span_to_lsp_range(location, &line_numbers);
+        let range = src_span_to_lsp_range(location, &line_numbers, Some(&module.code));
         // Check if the user's cursor is on the invalid name
         if overlaps(params.range, range) {
             let edit = TextEdit {

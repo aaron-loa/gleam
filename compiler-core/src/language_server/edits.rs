@@ -21,7 +21,7 @@ pub fn position_of_first_definition_if_import(
         .iter()
         .min_by(|a, b| a.location().start.cmp(&b.location().start));
     let import = first_definition.and_then(get_import);
-    import.map(|import| src_span_to_lsp_range(import.location, line_numbers).start)
+    import.map(|import| src_span_to_lsp_range(import.location, line_numbers, None).start)
 }
 
 pub fn get_import(statement: &TypedDefinition) -> Option<&Import<EcoString>> {

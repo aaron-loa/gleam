@@ -16,13 +16,18 @@ use crate::{
     Result,
 };
 use camino::{Utf8Path, Utf8PathBuf};
+use codespan_reporting::diagnostic;
 use debug_ignore::DebugIgnore;
 use itertools::Itertools;
 use lsp_types::{
-    self as lsp, HoverProviderCapability, InitializeParams, Position, PositionEncodingKind, PublishDiagnosticsParams, Range, TextEdit, Url
+    self as lsp, HoverProviderCapability, InitializeParams, Position, PositionEncodingKind,
+    PublishDiagnosticsParams, Range, TextEdit, Url,
 };
 use serde_json::Value as Json;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    io::Write,
+};
 
 /// This class is responsible for handling the language server protocol and
 /// delegating the work to the engine.
@@ -427,7 +432,7 @@ fn initialisation_handshake(connection: &lsp_server::Connection) -> InitializePa
         moniker_provider: None,
         linked_editing_range_provider: None,
         experimental: None,
-        position_encoding: Some(PositionEncodingKind::UTF8),
+        position_encoding: Some(PositionEncodingKind::UTF16),
         inline_value_provider: None,
         inlay_hint_provider: None,
         diagnostic_provider: None,
@@ -474,7 +479,7 @@ fn diagnostic_to_lsp(diagnostic: Diagnostic) -> Vec<lsp::Diagnostic> {
         .expect("Diagnostic given to LSP without location");
     let line_numbers = LineNumbers::new(&location.src);
     let path = path_to_uri(location.path);
-    let range = src_span_to_lsp_range(location.label.span, &line_numbers);
+    let range = src_span_to_lsp_range(location.label.span, &line_numbers, Some(&location.src));
 
     let related_info = location
         .extra_labels
@@ -485,12 +490,20 @@ fn diagnostic_to_lsp(diagnostic: Diagnostic) -> Vec<lsp::Diagnostic> {
                 let line_numbers = LineNumbers::new(src);
                 lsp::Location {
                     uri: path_to_uri(path.clone()),
-                    range: src_span_to_lsp_range(extra.label.span, &line_numbers),
+                    range: src_span_to_lsp_range(
+                        extra.label.span,
+                        &line_numbers,
+                        Some(&location.src),
+                    ),
                 }
             } else {
                 lsp::Location {
                     uri: path.clone(),
-                    range: src_span_to_lsp_range(extra.label.span, &line_numbers),
+                    range: src_span_to_lsp_range(
+                        extra.label.span,
+                        &line_numbers,
+                        Some(&location.src),
+                    ),
                 }
             };
             lsp::DiagnosticRelatedInformation { location, message }

@@ -157,7 +157,7 @@ impl<'ast> ast::visit::Visit<'ast> for RedundantTupleInCaseSubject<'_> {
                 }
             }
 
-            let range = src_span_to_lsp_range(*location, &self.line_numbers);
+            let range = src_span_to_lsp_range(*location, &self.line_numbers, Some(&self.code));
             self.hovered = self.hovered || overlaps(self.params.range, range);
 
             self.edits.extend(
@@ -218,6 +218,7 @@ impl<'a> RedundantTupleInCaseSubject<'a> {
             range: src_span_to_lsp_range(
                 SrcSpan::new(location.start, location.start + 1),
                 &self.line_numbers,
+                Some(&self.code),
             ),
             new_text: "".to_string(),
         });
@@ -236,6 +237,7 @@ impl<'a> RedundantTupleInCaseSubject<'a> {
                     location.start + lparen_offset as u32 + 1,
                 ),
                 &self.line_numbers,
+                Some(&self.code),
             ),
             new_text: "".to_string(),
         });
@@ -264,6 +266,7 @@ impl<'a> RedundantTupleInCaseSubject<'a> {
                             last_elem_location.end + trailing_comma_offset as u32 + 1,
                         ),
                         &self.line_numbers,
+                        Some(&self.code),
                     ),
                     new_text: "".to_string(),
                 });
@@ -275,6 +278,7 @@ impl<'a> RedundantTupleInCaseSubject<'a> {
             range: src_span_to_lsp_range(
                 SrcSpan::new(location.end - 1, location.end),
                 &self.line_numbers,
+                Some(&self.code),
             ),
             new_text: "".to_string(),
         });
@@ -286,7 +290,7 @@ impl<'a> RedundantTupleInCaseSubject<'a> {
         // Replace the old discard with multiple discard, one for each of the
         // tuple items.
         TextEdit {
-            range: src_span_to_lsp_range(discard_location, &self.line_numbers),
+            range: src_span_to_lsp_range(discard_location, &self.line_numbers, Some(&self.code)),
             new_text: itertools::intersperse(iter::repeat("_").take(tuple_items), ", ").collect(),
         }
     }
@@ -308,7 +312,11 @@ impl<'ast> ast::visit::Visit<'ast> for LetAssertToCase<'_> {
         // we only check for the code action between the `let` and `=`.
         let code_action_location =
             SrcSpan::new(assignment.location.start, assignment.value.location().start);
-        let code_action_range = src_span_to_lsp_range(code_action_location, &self.line_numbers);
+        let code_action_range = src_span_to_lsp_range(
+            code_action_location,
+            &self.line_numbers,
+            Some(&self.module.code),
+        );
 
         self.visit_typed_expr(&assignment.value);
 
@@ -338,7 +346,11 @@ impl<'ast> ast::visit::Visit<'ast> for LetAssertToCase<'_> {
             .get(pattern_location.start as usize..pattern_location.end as usize)
             .expect("Location must be valid");
 
-        let range = src_span_to_lsp_range(assignment.location, &self.line_numbers);
+        let range = src_span_to_lsp_range(
+            assignment.location,
+            &self.line_numbers,
+            Some(&self.module.code),
+        );
         let indent = " ".repeat(range.start.character as usize);
 
         // Figure out which variables are assigned in the pattern
@@ -451,7 +463,7 @@ impl<'a> LabelShorthandSyntax<'a> {
 
     fn push_delete_edit(&mut self, location: &SrcSpan) {
         self.edits.push(TextEdit {
-            range: src_span_to_lsp_range(*location, &self.line_numbers),
+            range: src_span_to_lsp_range(*location, &self.line_numbers, Some(&self.module.code)),
             new_text: "".into(),
         })
     }
@@ -473,7 +485,8 @@ impl<'a> LabelShorthandSyntax<'a> {
 
 impl<'ast> ast::visit::Visit<'ast> for LabelShorthandSyntax<'_> {
     fn visit_typed_call_arg(&mut self, arg: &'ast TypedCallArg) {
-        let arg_range = src_span_to_lsp_range(arg.location, &self.line_numbers);
+        let arg_range =
+            src_span_to_lsp_range(arg.location, &self.line_numbers, Some(&self.module.code));
         let is_selected = overlaps(arg_range, self.params.range);
 
         match arg {
@@ -491,7 +504,8 @@ impl<'ast> ast::visit::Visit<'ast> for LabelShorthandSyntax<'_> {
     }
 
     fn visit_typed_pattern_call_arg(&mut self, arg: &'ast CallArg<TypedPattern>) {
-        let arg_range = src_span_to_lsp_range(arg.location, &self.line_numbers);
+        let arg_range =
+            src_span_to_lsp_range(arg.location, &self.line_numbers, Some(&self.module.code));
         let is_selected = overlaps(arg_range, self.params.range);
 
         match arg {
@@ -509,7 +523,8 @@ impl<'ast> ast::visit::Visit<'ast> for LabelShorthandSyntax<'_> {
     }
 
     fn visit_typed_record_update_arg(&mut self, arg: &'ast TypedRecordUpdateArg) {
-        let arg_range = src_span_to_lsp_range(arg.location, &self.line_numbers);
+        let arg_range =
+            src_span_to_lsp_range(arg.location, &self.line_numbers, Some(&self.module.code));
         let is_selected = overlaps(arg_range, self.params.range);
 
         match arg {
@@ -582,6 +597,7 @@ impl<'a> FillInMissingLabelledArgs<'a> {
                         end: call_location.end - 1,
                     },
                     &self.line_numbers,
+                    Some(&self.module.code),
                 ),
                 new_text: missing_labels
                     .iter()
@@ -611,7 +627,8 @@ impl<'ast> ast::visit::Visit<'ast> for FillInMissingLabelledArgs<'ast> {
         fun: &'ast TypedExpr,
         args: &'ast [TypedCallArg],
     ) {
-        let call_range = src_span_to_lsp_range(*location, &self.line_numbers);
+        let call_range =
+            src_span_to_lsp_range(*location, &self.line_numbers, Some(&self.module.code));
         if !within(self.params.range, call_range) {
             return;
         }
@@ -690,7 +707,8 @@ pub fn code_action_import_module(
     );
 
     for missing_import in missing_imports {
-        let range = src_span_to_lsp_range(missing_import.location, &line_numbers);
+        let range =
+            src_span_to_lsp_range(missing_import.location, &line_numbers, Some(&module.code));
         if !overlaps(params.range, range) {
             continue;
         }
@@ -781,7 +799,7 @@ pub fn code_action_add_missing_patterns(
     let line_numbers = LineNumbers::new(&module.code);
 
     for (location, missing) in missing_patterns {
-        let range = src_span_to_lsp_range(location, &line_numbers);
+        let range = src_span_to_lsp_range(location, &line_numbers, Some(&module.code));
         if !overlaps(params.range, range) {
             return;
         }
@@ -832,7 +850,7 @@ pub fn code_action_add_missing_patterns(
                 end: location.end - 1,
             });
 
-        let insert_range = src_span_to_lsp_range(insert_span, &line_numbers);
+        let insert_range = src_span_to_lsp_range(insert_span, &line_numbers, Some(&module.code));
 
         for pattern in missing {
             let new_text = format!("\n{indent}  {pattern} -> todo");
@@ -888,6 +906,7 @@ pub fn code_action_add_missing_patterns(
             let range = src_span_to_lsp_range(
                 SrcSpan::new(start_brace_location, insert_span.start),
                 &line_numbers,
+                Some(&module.code),
             );
 
             // Remove any blank spaces/lines between the start brace and end brace
