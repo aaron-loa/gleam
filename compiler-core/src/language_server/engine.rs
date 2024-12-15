@@ -215,7 +215,7 @@ where
             let completer = Completer::new(&src, &params, &this.compiler, module);
             let byte_index = completer
                 .module_line_numbers
-                .byte_index(params.position.line, params.position.character);
+                .byte_index(params.position.line, params.position.character, src.as_str());
 
             // If in comment context, do not provide completions
             if module.extra.is_within_comment(byte_index) {
@@ -640,7 +640,7 @@ Unused labelled fields:
         module: &'a Module,
     ) -> Option<(LineNumbers, Located<'a>)> {
         let line_numbers = LineNumbers::new(&module.code);
-        let byte_index = line_numbers.byte_index(params.position.line, params.position.character);
+        let byte_index = line_numbers.byte_index(params.position.line, params.position.character, &module.code);
         let node = module.find_node(byte_index);
         let node = node?;
         Some((line_numbers, node))

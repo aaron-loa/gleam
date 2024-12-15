@@ -59,10 +59,12 @@ fn apply_code_edit(src: &str, changes: HashMap<Url, Vec<lsp_types::TextEdit>>) -
     for (_, mut change) in changes {
         change.sort_by_key(|edit| (edit.range.start.line, edit.range.start.character));
         for edit in change {
-            let start = line_numbers.byte_index(edit.range.start.line, edit.range.start.character)
+            let start =
+                line_numbers.byte_index(edit.range.start.line, edit.range.start.character, src)
+                    as i32
+                    - offset;
+            let end = line_numbers.byte_index(edit.range.end.line, edit.range.end.character, src)
                 as i32
-                - offset;
-            let end = line_numbers.byte_index(edit.range.end.line, edit.range.end.character) as i32
                 - offset;
             let range = (start as usize)..(end as usize);
             offset += end - start;

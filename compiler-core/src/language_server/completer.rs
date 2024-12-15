@@ -122,9 +122,11 @@ where
         &'a self,
         valid_phrase_char: &impl Fn(char) -> bool,
     ) -> (Range, String) {
-        let cursor = self
-            .src_line_numbers
-            .byte_index(self.cursor_position.line, self.cursor_position.character);
+        let cursor = self.src_line_numbers.byte_index(
+            self.cursor_position.line,
+            self.cursor_position.character,
+            &self.src,
+        );
 
         // Get part of phrase prior to cursor
         let before = self
@@ -185,12 +187,12 @@ where
     /// If the line includes a dot then it provides unqualified import completions.
     /// Otherwise it provides direct module import completions.
     pub fn import_completions(&'a self) -> Option<Result<Option<Vec<CompletionItem>>>> {
-        let start_of_line = self
-            .src_line_numbers
-            .byte_index(self.cursor_position.line, 0);
-        let end_of_line = self
-            .src_line_numbers
-            .byte_index(self.cursor_position.line + 1, 0);
+        let start_of_line =
+            self.src_line_numbers
+                .byte_index(self.cursor_position.line, 0, &self.src);
+        let end_of_line =
+            self.src_line_numbers
+                .byte_index(self.cursor_position.line + 1, 0, &self.src);
 
         // Drop all lines except the line the cursor is on
         let src = self.src.get(start_of_line as usize..end_of_line as usize)?;
@@ -212,10 +214,12 @@ where
             )))
         } else {
             // Find where to start and end the import completion
-            let start = self.src_line_numbers.line_and_column_number(start_of_line);
+            let start = self
+                .src_line_numbers
+                .line_and_column_number(start_of_line, &self.src);
             let end = self
                 .src_line_numbers
-                .line_and_column_number(end_of_line - 1);
+                .line_and_column_number(end_of_line - 1, &self.src);
             let start = Position::new(start.line - 1, start.column + 6);
             let end = Position::new(end.line - 1, end.column - 1);
             let completions = self.complete_modules_for_import(start, end);
@@ -571,9 +575,11 @@ where
         // Do not complete direct module values if the user has already started typing a module select.
         // e.x. when the user has typed mymodule.| we know local module values are no longer relevant
         if module_select.is_none() {
-            let cursor = self
-                .src_line_numbers
-                .byte_index(self.cursor_position.line, self.cursor_position.character);
+            let cursor = self.src_line_numbers.byte_index(
+                self.cursor_position.line,
+                self.cursor_position.character,
+                &self.src,
+            );
 
             // Find the function that the cursor is in and push completions for
             // its arguments and local variables.

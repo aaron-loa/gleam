@@ -16,7 +16,6 @@ use crate::{
     Result,
 };
 use camino::{Utf8Path, Utf8PathBuf};
-use codespan_reporting::diagnostic;
 use debug_ignore::DebugIgnore;
 use itertools::Itertools;
 use lsp_types::{
@@ -24,10 +23,7 @@ use lsp_types::{
     PublishDiagnosticsParams, Range, TextEdit, Url,
 };
 use serde_json::Value as Json;
-use std::{
-    collections::{HashMap, HashSet},
-    io::Write,
-};
+use std::collections::{HashMap, HashSet};
 
 /// This class is responsible for handling the language server protocol and
 /// delegating the work to the engine.
